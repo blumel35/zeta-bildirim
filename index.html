@@ -1,174 +1,60 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Startkey Zeta — Bildirimler</title>
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icons/icon-192.png">
-<style>
-  body {
-    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background: #FBF7F0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #1C2B47;
-  }
-  .kart { max-width: 360px; padding: 32px 24px; text-align: center; }
-  .logo { width: 48px; height: 48px; background: #1C2B47; border-radius: 12px; display: flex;
-          align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff;
-          margin: 0 auto 18px; }
-  h1 { font-size: 18px; margin: 0 0 8px; }
-  p { font-size: 13px; color: #6b6455; line-height: 1.5; margin: 0 0 22px; }
-  button { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #c0392b; color: #fff;
-           font-size: 15px; font-weight: 600; cursor: pointer; }
-  button:disabled { background: #b9b2a2; cursor: default; }
-  #durum { margin-top: 16px; font-size: 12px; color: #6b6455; min-height: 16px; }
-</style>
-</head>
-<body>
-<div class="kart">
-  <div class="logo">Z</div>
-  <h1 id="baslik">Telefon Bildirimleri</h1>
-  <p id="aciklama">Bu cihazı Startkey Zeta Danışman Panosu bildirimleri için kaydediyoruz.</p>
-  <button id="btn" type="button">Bildirimleri Aç</button>
-  <div id="durum"></div>
-</div>
-
-<script>
-(function () {
-  // === Aşağıdaki iki değeri Karma App'te kullanılanla AYNI yap ===
-  // (Supabase anon/publishable key GİZLİ DEĞİL — RLS ile korunuyor.)
-  var SUPABASE_URL = "https://lfpnkuldlirnljsrkkyf.supabase.co";
-  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmcG5rdWxkbGlybmxqc3Jra3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4OTc2MzUsImV4cCI6MjA5MzQ3MzYzNX0.88ex_GVaplg78Z7dhu8FARGLKXg3O3eoBQLh4_2b8E0";
-  var VAPID_PUBLIC_KEY = "BHoooveN3H3ONOIqV2TYfGGKgRKf-Br-IFyAjb4A6XvX_sCn-r72F5YbkZ9Jzg6GhASXnFiKox5EENqhzKzFjT8";
-
-  // DÜZELTME (bağımsız inceleme, 3. ve 4. madde):
-  // - 3. madde: notificationclick artık Karma App URL'sini clients.
-  //   openWindow() ile DOĞRUDAN açıyor (bkz. sw.js) — W3C Service Worker
-  //   spesifikasyonunun openWindow() algoritması, hedef URL'nin origin'i
-  //   ne olursa olsun yeni bir üst-seviye tarama bağlamı oluşturup ORAYA
-  //   navigasyon yapıyor; origin/storage-key karşılaştırması yalnızca
-  //   DÖNÜŞ DEĞERİNİ (WindowClient nesnesi mi, null mü) etkiliyor, sayfa
-  //   açılıp açılmayacağını DEĞİL. Bu yüzden bu sayfanın kendi üzerinden
-  //   yönlendirme yapan "?redirect=..." modu (v1'de vardı) artık GEREKSİZ
-  //   — ayrıca bu mod, hedef URL'yi doğrulamadan kabul ettiği için
-  //   teorik bir "open redirect" yüzeyiydi; kaldırıldı.
-  // - 4. madde: token artık URL SORGU dizisinde değil, URL FRAGMENT'ında
-  //   (#t=...) taşınıyor — fragment tarayıcı tarafından sunucuya HİÇ
-  //   gönderilmez, barındırma/erişim loglarına düşmez.
-  var token = window.location.hash.indexOf('#t=') === 0
-    ? decodeURIComponent(window.location.hash.slice(3))
-    : null;
-
-  var baslik = document.getElementById('baslik');
-  var aciklama = document.getElementById('aciklama');
-  var btn = document.getElementById('btn');
-  var durumEl = document.getElementById('durum');
-
-  function durumYaz(metin) { durumEl.textContent = metin || ''; }
-
-  if (!token) {
-    baslik.textContent = 'Geçersiz bağlantı';
-    aciklama.textContent = 'Bu sayfa yalnızca Danışman Panosu üzerinden açılan bir bildirim aktivasyon bağlantısıyla çalışır.';
-    btn.style.display = 'none';
-    return;
-  }
-
-  if (!('serviceWorker' in navigator) || !window.PushManager || !window.Notification) {
-    aciklama.textContent = 'Bu tarayıcı web push bildirimlerini desteklemiyor.';
-    btn.disabled = true;
-    return;
-  }
-
-  if (Notification.permission === 'denied') {
-    aciklama.textContent = 'Bildirimler bu tarayıcıda engellenmiş. Chrome ⋮ > Ayarlar > Site ayarları > Bildirimler\'den bu siteye izin ver, sonra sayfayı yenile.';
-    btn.disabled = true;
-  }
-
-  function urlB64ToUint8Array(base64String) {
-    var padding = '='.repeat((4 - base64String.length % 4) % 4);
-    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    var rawData = atob(base64);
-    var arr = new Uint8Array(rawData.length);
-    for (var i = 0; i < rawData.length; ++i) arr[i] = rawData.charCodeAt(i);
-    return arr;
-  }
-
-  btn.addEventListener('click', function () {
-    btn.disabled = true;
-    durumYaz('İzin isteniyor…');
-
-    Notification.requestPermission()
-      .then(function (izin) {
-        if (izin !== 'granted') {
-          durumYaz('İzin verilmedi (' + izin + ').');
-          btn.disabled = false;
-          return Promise.reject(new Error('izin-reddedildi'));
-        }
-        durumYaz('Cihaz kaydı hazırlanıyor…');
-        // GitHub Pages'te bu proje bir alt yolda barındırılıyor
-        // (https://<kullanici>.github.io/zeta-bildirim/), kök dizinde
-        // DEĞİL — bu yüzden KÖK-GÖRELİ ("/sw.js") değil, sayfaya GÖRELİ
-        // ("./sw.js") bir yol kullanıyoruz. Varsayılan scope, register
-        // edilen script'in bulunduğu dizin olur (burada "/zeta-bildirim/"),
-        // bu da sayfanın kendisiyle aynı — kapsam belirsizliği yok.
-        return navigator.serviceWorker.register('./sw.js');
-      })
-      .then(function (reg) {
-        return reg.active ? reg : new Promise(function (resolve) {
-          var worker = reg.installing || reg.waiting;
-          if (!worker) return resolve(reg);
-          worker.addEventListener('statechange', function () {
-            if (worker.state === 'activated') resolve(reg);
-          });
-        });
-      })
-      .then(function (reg) {
-        durumYaz('Push servisine kaydediliyor…');
-        return reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-      })
-      .then(function (sub) {
-        durumYaz('Sunucuya yazılıyor…');
-        var ham = sub.toJSON();
-        return fetch(SUPABASE_URL + '/rest/v1/rpc/aktivasyon_token_dogrula_ve_kaydet', {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            p_token: token,
-            p_endpoint: ham.endpoint,
-            p_p256dh: ham.keys.p256dh,
-            p_auth: ham.keys.auth
-          })
-        });
-      })
-      .then(function (r) {
-        if (r.ok) {
-          baslik.textContent = 'Bildirimler açık ✅';
-          aciklama.textContent = 'Bu sekmeyi kapatabilirsin, Karma App\'e dönebilirsin.';
-          btn.style.display = 'none';
-          durumYaz('');
-          // Token artık kullanıldı — adres çubuğundan/geçmişten temizle.
-          if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname);
-          }
-        } else {
-          return r.text().then(function (t) {
-            throw new Error('Sunucu reddetti (HTTP ' + r.status + '): ' + t);
-          });
-        }
-      })
-      .catch(function (e) {
-        if (e && e.message === 'izin-reddedildi') return;
-        durumYaz('Hata: ' + (e && e.message ? e.message : e));
-        btn.disabled = false;
-      });
-  });
-})();
-</script>
-</body>
-</html>
+diff --git a/index.html b/index.html
+index c101c7a..75a8863 100644
+--- a/index.html
++++ b/index.html
+@@ -30,6 +30,19 @@
+   <p id="aciklama">Bu cihazı Startkey Zeta Danışman Panosu bildirimleri için kaydediyoruz.</p>
+   <button id="btn" type="button">Bildirimleri Aç</button>
+   <div id="durum"></div>
++  <!-- GEÇİCİ (03.09.2026) — teşhis amaçlı: push/internet hiç
++       karışmadan, doğrudan bu cihazdaki kayıtlı Service Worker'a
++       showNotification() dedirtir. "Bildirimler açık ✅" gördükten
++       SONRA bu düğmeye basılmalı (önce Service Worker kaydı lazım).
++       Sonuç ikiye ayırıyor:
++         - Bu bile ekranda görünmezse: sorun Android/Chrome bildirim
++           izninde (bkz. Ayarlar → Uygulamalar → Chrome → Bildirimler).
++         - Bu görünürse ama gerçek push gelmezse: sorun push
++           servisi/VAPID/payload tarafında, cihaz/izin tarafında değil.
++       Sorun netleşince kaldırılacak. -->
++  <button id="btnYerelTest" type="button" style="margin-top:10px; background:#6b6455;">
++    🔧 Yerel Bildirimi Test Et (deneme)
++  </button>
+ </div>
+ 
+ <script>
+@@ -168,6 +181,35 @@
+         btn.disabled = false;
+       });
+   });
++
++  // GEÇİCİ — yerel bildirim testi (bkz. yukarıdaki HTML yorumu).
++  var btnYerelTest = document.getElementById('btnYerelTest');
++  btnYerelTest.addEventListener('click', function () {
++    if (!('serviceWorker' in navigator)) {
++      durumYaz('Bu tarayıcı Service Worker desteklemiyor.');
++      return;
++    }
++    if (Notification.permission !== 'granted') {
++      durumYaz('Önce yukarıdaki "Bildirimleri Aç" ile izin vermen lazım (şu an: ' + Notification.permission + ').');
++      return;
++    }
++    navigator.serviceWorker.getRegistration('./sw.js')
++      .then(function (reg) {
++        if (!reg) {
++          durumYaz('Bu cihazda kayıtlı Service Worker yok — önce "Bildirimleri Aç"a bas.');
++          return;
++        }
++        return reg.showNotification('Yerel Test', {
++          body: 'Service Worker bildirim gösterebiliyor. (internet/push YOK, yerel test)',
++          icon: 'icons/icon-192.png',
++        }).then(function () {
++          durumYaz('Yerel bildirim tetiklendi — ekranını/bildirim çubuğunu kontrol et.');
++        });
++      })
++      .catch(function (e) {
++        durumYaz('Yerel test hatası: ' + (e && e.message ? e.message : e));
++      });
++  });
+ })();
+ </script>
+ </body>
