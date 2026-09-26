@@ -18,43 +18,49 @@
   }
   .kart { text-align: center; padding: 24px; }
   .logo { width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px; display: block; }
-  p { font-size: 13px; color: #5b6478; margin: 0; }
-  a { color: #1C2B47; }
+  p { font-size: 13px; color: #5b6478; margin: 0 0 18px; }
+  a.buton {
+    display: inline-block; padding: 14px 22px; background: #1C2B47; color: #fff;
+    border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 14px;
+  }
 </style>
 </head>
 <body>
 <div class="kart">
   <img class="logo" src="./icon-192.png" alt="">
-  <p id="durum">Danışman Panosu açılıyor…</p>
+  <p id="durum">Danışman Panosu'na gitmek için dokun.</p>
+  <a class="buton" id="git-link" href="https://startkey-zeta.streamlit.app/Danisman_Giris">Danışman Panosu'nu Aç</a>
 </div>
 
 <!--
-  pano/index.html (24.09.2026)
+  pano/index.html (26.09.2026, 2. düzeltme)
 
-  Meltem: telefonda "Yükle"/"Ana ekrana ekle" yapınca ikon/isim
-  Karma App'in kendi manifest'i yerine Streamlit'in kendi varsayılan
-  markasıyla ("Streamlit") çıkıyordu. Araştırma sonucu: bu, Streamlit
-  Community Cloud'un BİLİNEN, ÇÖZÜLMEMİŞ bir kısıtlaması (aynı şikayet
-  Streamlit'in kendi forumunda da var, çözüm yok) — Streamlit Cloud
-  kendi PWA manifest'ini sayfa seviyesindeki manifest linkinin önüne
-  geçiriyor, bizim tarafta yapılabilecek bir kod düzeltmesi yok.
+  1. düzeltme (24.09.2026): Chrome'un "Yükle" akışı Streamlit'in kendi
+  markasını gösteriyordu (Streamlit Cloud'un bilinen, çözülmemiş bir
+  kısıtlaması) — çözüm, bu sayfayı Streamlit DIŞINDA (GitHub Pages)
+  barındırıp doğru manifest/ikonla ekrana eklenmesini sağlamaktı.
 
-  Çözüm: push bildirimlerinde zaten kullandığımız AYNI desen — Streamlit
-  DIŞINDA (GitHub Pages) barındırılan, kendi doğru manifest'i/ikonu olan
-  ince bir "kabuk" sayfa. Telefona BU sayfa "Danışman Panosu" adı/ikonuyla
-  ekleniyor (Streamlit hiç karışmıyor, çünkü bu sayfa Streamlit'te değil),
-  açılır açılmaz gerçek uygulamaya (Danışman Girişi) yönlendiriyor.
+  2. düzeltme (26.09.2026, Meltem: "streamlit ikonu hala"): İlk sürümde
+  sayfa açılır açılmaz OTOMATİK yönlendiriyordu — bu, Meltem menüden
+  "Yükle"ya basana KADAR sayfa zaten gerçek uygulamaya geçmiş oluyordu,
+  yani Chrome'un "Yükle" sırasında yakaladığı sayfa hiçbir zaman bizim
+  sayfamız olmuyordu (hep zaten yönlenilmiş Streamlit sayfası) — 1.
+  düzeltme bu yüzden hiç devreye giremedi.
 
-  NOT (26.09.2026): ikon dosyaları BİLEREK bir alt klasöre (icons/)
-  değil, bu klasörle AYNI seviyeye konuldu — GitHub'ın web arayüzünden
-  "Upload files" ile yükleme yaparken tek düz bir klasör sürüklemek,
-  iç içe alt klasörlü bir yapıdan çok daha az karışıklığa yol açıyor.
+  Şimdi: sadece telefonun ANA EKRANINDAN açıldığında (yani "standalone"
+  modda, zaten kurulu bir kısayol/uygulama olarak) otomatik yönlendiriyor.
+  Normal bir tarayıcı sekmesinde (kurulum sırasında) açıldığında sayfa
+  SABİT kalıyor — böylece "Yükle"/"Kısayol Oluştur" işlemi sırasında
+  Chrome'un gördüğü sayfa her zaman BU sayfa (doğru manifest/ikonla).
 -->
 <script>
-  window.location.replace("https://startkey-zeta.streamlit.app/Danisman_Giris");
+(function () {
+  var standaloneMi = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  if (standaloneMi) {
+    window.location.replace("https://startkey-zeta.streamlit.app/Danisman_Giris");
+  }
+})();
 </script>
-<noscript>
-  <p>JavaScript kapalı görünüyor. <a href="https://startkey-zeta.streamlit.app/Danisman_Giris">Danışman Panosu'na gitmek için dokun</a>.</p>
-</noscript>
 </body>
 </html>
