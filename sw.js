@@ -55,13 +55,29 @@ self.addEventListener('push', function (event) {
     // kullanıyoruz, aksi halde ikon 404 olur.
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
-    // YENİ (26.09.2026, Meltem: "bildirimler sessiz ve dikkat çekmiyor,
-    // amacımız takip kolaylığı"): belirgin bir titreşim paterni (kısa-
-    // duraklama-kısa-duraklama-uzun) eklendi — Android'de ses telefonun
-    // KENDİ bildirim kanalı ayarına bağlı (biz kod tarafından özel bir
-    // ses dosyası çalamıyoruz, bu web push'un platform sınırı), ama
-    // titreşim JS'ten ayarlanabiliyor ve sessiz modda bile hissediliyor.
-    vibrate: [200, 100, 200, 100, 400],
+    // YENİ (26.09.2026, Meltem: "titreşimi güçlendirelim, görsel tasarımı
+    // zenginleştirelim"): büyük logo görseli eklendi (Android'de bildirim
+    // genişletildiğinde metnin altında büyük bir Startkey Zeta logosu
+    // gösteriyor — bildirimin "kimden geldiği" tek bakışta belli oluyor).
+    // Ayrı bir banner görseli hazırlamadığımız için mevcut 512px logo
+    // kullanıldı; ileride özel bir banner tasarlanırsa burada değişir.
+    image: 'icons/icon-512.png',
+    // Bildirime dokunmadan da doğrudan aksiyon alınabilsin diye bir
+    // kısayol butonu eklendi. notificationclick aşağıda action'a
+    // bakmaksızın aynı hedefe gidiyor, bu yüzden ek bir dallanmaya
+    // gerek yok — buton da gövdeye dokunmak da aynı sonucu veriyor.
+    actions: [
+      { action: 'ac', title: 'Panoyu Aç' },
+    ],
+    // GÜÇLENDİRİLDİ (26.09.2026, Meltem: "titreşimi güçlendirelim") —
+    // önceki patern (200-100-200-100-400) yerine daha uzun ve daha
+    // belirgin bir patern: iki güçlü vuruş + uzun bir kapanış titreşimi.
+    // Android'de ses telefonun KENDİ bildirim kanalı ayarına bağlı (biz
+    // kod tarafından özel bir ses dosyası çalamıyoruz, bu web push'un
+    // platform sınırı — telefonun Ayarlar > Uygulamalar > Chrome >
+    // Bildirimler bölümünden kendi sesini seçebilirsin), ama titreşim
+    // JS'ten ayarlanabiliyor ve sessiz modda bile hissediliyor.
+    vibrate: [400, 150, 400, 150, 400, 150, 700],
     // requireInteraction: true → bildirim birkaç saniye sonra kendiliğinden
     // kaybolmuyor, kullanıcı elle kapatana/dokunana kadar ekranda kalıyor.
     // "Takip kolaylığı" hedefine (kaçırmamak) bunun sessiz titreşimden
@@ -80,6 +96,9 @@ self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   var hedefUrl = (event.notification.data && event.notification.data.url) || 'https://startkey-zeta.streamlit.app/';
 
+  // Gövdeye dokunmak VEYA "Panoyu Aç" butonuna dokunmak aynı hedefe
+  // gidiyor (event.action kontrol edilmiyor bilerek) — tek bir aksiyon
+  // olduğu için ayrı bir dallanmaya gerek yok.
   // Cross-origin (Karma App) URL'sini doğrudan açıyoruz — bkz. yukarıdaki
   // dosya başı not. Ara "yönlendirme sayfası" YOK artık.
   event.waitUntil(self.clients.openWindow(hedefUrl));
