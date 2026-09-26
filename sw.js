@@ -55,6 +55,18 @@ self.addEventListener('push', function (event) {
     // kullanıyoruz, aksi halde ikon 404 olur.
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
+    // YENİ (26.09.2026, Meltem: "bildirimler sessiz ve dikkat çekmiyor,
+    // amacımız takip kolaylığı"): belirgin bir titreşim paterni (kısa-
+    // duraklama-kısa-duraklama-uzun) eklendi — Android'de ses telefonun
+    // KENDİ bildirim kanalı ayarına bağlı (biz kod tarafından özel bir
+    // ses dosyası çalamıyoruz, bu web push'un platform sınırı), ama
+    // titreşim JS'ten ayarlanabiliyor ve sessiz modda bile hissediliyor.
+    vibrate: [200, 100, 200, 100, 400],
+    // requireInteraction: true → bildirim birkaç saniye sonra kendiliğinden
+    // kaybolmuyor, kullanıcı elle kapatana/dokunana kadar ekranda kalıyor.
+    // "Takip kolaylığı" hedefine (kaçırmamak) bunun sessiz titreşimden
+    // daha çok katkısı olur.
+    requireInteraction: true,
     // veri.url Karma App'in MUTLAK adresi olmalı
     // (örn. "https://startkey-zeta.streamlit.app/Danisman_Secim") —
     // bkz. push_bildirim_ADAY.py, bildirim_gonder().
